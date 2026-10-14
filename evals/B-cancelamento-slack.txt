@@ -1,0 +1,10 @@
+[mensagem do PO no Slack, colada pelo usuário]
+
+pessoal, regra do cancelamento pra sprint que vem:
+- o assinante cancela pelo app a qualquer momento, em Conta > Assinatura > Cancelar
+- antes de cancelar a gente pede confirmação ("Tem certeza?")
+- se cancelar em até 7 dias da contratação tem reembolso integral (CDC)
+- passou dos 7 dias, ele continua com acesso até o fim do período que já pagou e não é cobrado de novo
+- plano anual cancelado depois dos 7 dias: reembolso proporcional aos meses não usados
+- manda e-mail confirmando o cancelamento
+planos: mensal 39,90 e anual 399,00

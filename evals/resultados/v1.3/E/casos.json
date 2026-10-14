@@ -1,0 +1,226 @@
+{
+  "funcionalidade": "Webhook de confirmação de pagamento Pix",
+  "origem": "HIST-510 (requisito.md) + trecho atual de webhook_controller.py, usado só para rotas e campos",
+  "criterios": [
+    {"id": "CA1", "descricao": "Assinatura ausente ou inválida: responder 401 e não alterar a cobrança", "fonte": "explícito"},
+    {"id": "CA2", "descricao": "Evento com status = pago: a cobrança passa para paga e a resposta é 200", "fonte": "explícito"},
+    {"id": "CA3", "descricao": "Evento repetido (mesmo event_id já processado): responder 200 sem processar de novo", "fonte": "explícito"},
+    {"id": "CA4", "descricao": "Valor do evento diferente do valor da cobrança: registrar VALOR_DIVERGENTE com os dois valores no log de auditoria e marcar a cobrança como paga mesmo assim", "fonte": "explícito"},
+    {"id": "CA5", "descricao": "Antes de marcar como paga, a API consulta GET /v1/pix/{id} no gateway para confirmar o evento", "fonte": "explícito"},
+    {"id": "CA6", "descricao": "cobranca_id que não existe: responder 404", "fonte": "explícito"}
+  ],
+  "casos": [
+    {
+      "id": "CT-01",
+      "titulo": "Evento pago com assinatura válida marca a cobrança #123 como paga",
+      "criterios": ["CA2"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Cobrança #123 (R$ 39,90) com status pendente", "Gateway (ou mock) responde status pago na consulta do Pix da #123", "Segredo de homologação do gateway disponível para calcular o HMAC"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_123_01\", \"cobranca_id\": 123, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo acima com o segredo de homologação"},
+      "passos": ["Calcular o HMAC-SHA256 do corpo exato que será enviado", "Enviar POST /webhooks/pix com o corpo e o cabeçalho X-Assinatura", "Consultar o status da cobrança #123"],
+      "resultado_esperado": "Resposta HTTP 200 e a cobrança #123 fica com status paga"
+    },
+    {
+      "id": "CT-02",
+      "titulo": "Requisição sem cabeçalho X-Assinatura recebe 401 e não altera a cobrança",
+      "criterios": ["CA1"],
+      "tipo": "negativo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Cobrança #123 (R$ 39,90) com status pendente"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_123_02\", \"cobranca_id\": 123, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "(cabeçalho não enviado)"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo, sem o cabeçalho X-Assinatura", "Consultar o status da cobrança #123"],
+      "resultado_esperado": "Resposta HTTP 401 e a cobrança #123 continua pendente"
+    },
+    {
+      "id": "CT-03",
+      "titulo": "Assinatura calculada com segredo errado recebe 401 e não altera a cobrança",
+      "criterios": ["CA1"],
+      "tipo": "negativo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Cobrança #123 (R$ 39,90) com status pendente"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_123_03\", \"cobranca_id\": 123, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo errado segredo-qa-invalido"},
+      "passos": ["Calcular o HMAC-SHA256 do corpo com o segredo segredo-qa-invalido", "Enviar POST /webhooks/pix com o corpo e essa assinatura", "Consultar o status da cobrança #123"],
+      "resultado_esperado": "Resposta HTTP 401 e a cobrança #123 continua pendente"
+    },
+    {
+      "id": "CT-04",
+      "titulo": "Corpo alterado depois de assinado recebe 401 e não altera a cobrança",
+      "criterios": ["CA1"],
+      "tipo": "negativo",
+      "tecnica": "suposição de erro",
+      "prioridade": "Média",
+      "pre_condicoes": ["Cobrança #124 (R$ 399,00) com status pendente"],
+      "dados": {"corpo assinado": "{\"event_id\": \"evt_qa_124_04\", \"cobranca_id\": 124, \"status\": \"pago\", \"valor\": 399.00}", "corpo enviado": "{\"event_id\": \"evt_qa_124_04\", \"cobranca_id\": 124, \"status\": \"pago\", \"valor\": 0.01}", "X-Assinatura": "HMAC-SHA256 do corpo assinado, com o segredo correto"},
+      "passos": ["Calcular o HMAC-SHA256 do corpo assinado com o segredo de homologação", "Enviar POST /webhooks/pix com o corpo enviado (valor 0.01) e a assinatura do corpo assinado", "Consultar o status da cobrança #124"],
+      "resultado_esperado": "Resposta HTTP 401 e a cobrança #124 continua pendente"
+    },
+    {
+      "id": "CT-05",
+      "titulo": "Assinatura válida de corpo com espaços e campos em outra ordem é aceita",
+      "criterios": ["CA1", "CA2"],
+      "tipo": "borda",
+      "tecnica": "suposição de erro",
+      "prioridade": "Média",
+      "pre_condicoes": ["Cobrança #123 (R$ 39,90) com status pendente", "Gateway (ou mock) responde status pago na consulta do Pix da #123"],
+      "dados": {"corpo (byte a byte)": "{ \"valor\": 39.90,  \"status\": \"pago\", \"cobranca_id\": 123, \"event_id\": \"evt_qa_123_05\" }", "X-Assinatura": "HMAC-SHA256 desses bytes exatos, com o segredo correto"},
+      "passos": ["Calcular o HMAC-SHA256 dos bytes exatos do corpo, sem reformatar o JSON", "Enviar POST /webhooks/pix com esses mesmos bytes e a assinatura", "Consultar o status da cobrança #123"],
+      "resultado_esperado": "Resposta HTTP 200 e a cobrança #123 fica com status paga"
+    },
+    {
+      "id": "CT-06",
+      "titulo": "Reenvio de evento já processado responde 200 sem processar de novo",
+      "criterios": ["CA3"],
+      "tipo": "positivo",
+      "tecnica": "transição de estado",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Cobrança #124 (R$ 399,00) já marcada como paga pelo evento evt_qa_124_06 (valor 39.90), que gerou 1 registro VALOR_DIVERGENTE no log de auditoria", "Log de chamadas do mock do gateway zerado depois do primeiro processamento"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_124_06\", \"cobranca_id\": 124, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Reenviar POST /webhooks/pix com o mesmo corpo e a mesma assinatura do primeiro envio", "Contar os registros VALOR_DIVERGENTE da cobrança #124 no log de auditoria", "Conferir o log de chamadas do mock do gateway"],
+      "resultado_esperado": "Resposta HTTP 200; o log de auditoria continua com 1 registro VALOR_DIVERGENTE para a #124 e o mock do gateway não recebe nenhuma consulta nova"
+    },
+    {
+      "id": "CT-07",
+      "titulo": "Dois envios simultâneos do mesmo evento são processados uma única vez",
+      "criterios": ["CA3"],
+      "tipo": "borda",
+      "tecnica": "suposição de erro",
+      "prioridade": "Média",
+      "pre_condicoes": ["Cobrança #124 (R$ 399,00) com status pendente e nenhum registro VALOR_DIVERGENTE", "Gateway (ou mock) responde status pago na consulta do Pix da #124"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_124_07\", \"cobranca_id\": 124, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto", "ferramenta": "2 requisições disparadas em paralelo (ex.: 2 curl em background ou JMeter com 2 threads)"},
+      "passos": ["Disparar duas requisições POST /webhooks/pix idênticas ao mesmo tempo", "Contar os registros VALOR_DIVERGENTE da cobrança #124 no log de auditoria"],
+      "resultado_esperado": "As duas respostas são HTTP 200 e o log de auditoria tem exatamente 1 registro VALOR_DIVERGENTE para a #124"
+    },
+    {
+      "id": "CT-08",
+      "titulo": "Evento novo de pagamento para a cobrança #125, que já está paga",
+      "criterios": ["CA2", "CA3"],
+      "tipo": "borda",
+      "tecnica": "transição de estado",
+      "prioridade": "Média",
+      "pre_condicoes": ["Cobrança #125 (R$ 39,90) já com status paga", "event_id evt_qa_125_08 nunca enviado antes"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_125_08\", \"cobranca_id\": 125, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo e a assinatura", "Anotar o código HTTP da resposta", "Consultar o status da cobrança #125"],
+      "resultado_esperado": "A cobrança #125 continua com status paga (código HTTP a conferir com a resposta da D2)"
+    },
+    {
+      "id": "CT-09",
+      "titulo": "Pagamento menor que a cobrança registra VALOR_DIVERGENTE com os dois valores",
+      "criterios": ["CA4"],
+      "tipo": "positivo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Cobrança #124 (R$ 399,00) com status pendente", "Gateway (ou mock) responde status pago na consulta do Pix da #124"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_124_09\", \"cobranca_id\": 124, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo e a assinatura", "Consultar o log de auditoria da cobrança #124", "Consultar o status da cobrança #124"],
+      "resultado_esperado": "Resposta HTTP 200; o log de auditoria tem um registro VALOR_DIVERGENTE com os valores 399.00 (cobrança) e 39.90 (evento); a cobrança #124 fica com status paga"
+    },
+    {
+      "id": "CT-10",
+      "titulo": "Pagamento maior que a cobrança marca a #123 como paga mesmo com divergência",
+      "criterios": ["CA4"],
+      "tipo": "positivo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": ["Cobrança #123 (R$ 39,90) com status pendente", "Gateway (ou mock) responde status pago na consulta do Pix da #123"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_123_10\", \"cobranca_id\": 123, \"status\": \"pago\", \"valor\": 40.00}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo e a assinatura", "Consultar o status da cobrança #123", "Consultar o log de auditoria da cobrança #123"],
+      "resultado_esperado": "Resposta HTTP 200; a cobrança #123 fica com status paga e o log de auditoria tem um registro VALOR_DIVERGENTE com 39.90 e 40.00"
+    },
+    {
+      "id": "CT-11",
+      "titulo": "Diferença de 1 centavo (R$ 39,89 na #123) já registra VALOR_DIVERGENTE",
+      "criterios": ["CA4"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": ["Cobrança #123 (R$ 39,90) com status pendente", "Gateway (ou mock) responde status pago na consulta do Pix da #123"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_123_11\", \"cobranca_id\": 123, \"status\": \"pago\", \"valor\": 39.89}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo e a assinatura", "Consultar o log de auditoria da cobrança #123"],
+      "resultado_esperado": "O log de auditoria tem um registro VALOR_DIVERGENTE com 39.90 e 39.89"
+    },
+    {
+      "id": "CT-12",
+      "titulo": "Valor igual ao da cobrança (39.90 na #123) não registra VALOR_DIVERGENTE",
+      "criterios": ["CA4"],
+      "tipo": "negativo",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": ["Cobrança #123 (R$ 39,90) com status pendente e nenhum registro VALOR_DIVERGENTE", "Gateway (ou mock) responde status pago na consulta do Pix da #123"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_123_12\", \"cobranca_id\": 123, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo e a assinatura", "Consultar o log de auditoria da cobrança #123"],
+      "resultado_esperado": "Nenhum registro VALOR_DIVERGENTE para a cobrança #123 no log de auditoria"
+    },
+    {
+      "id": "CT-13",
+      "titulo": "API consulta GET /v1/pix/{id} no gateway antes de marcar a cobrança como paga",
+      "criterios": ["CA5"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Cobrança #123 (R$ 39,90) com status pendente", "Gateway substituído por mock que registra as chamadas recebidas e responde status pago"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_123_13\", \"cobranca_id\": 123, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo e a assinatura", "Conferir o log de chamadas do mock", "Comparar o horário da chamada ao mock com o horário em que a #123 mudou para paga"],
+      "resultado_esperado": "O mock recebeu 1 chamada GET /v1/pix/{id} com o identificador definido na D1, antes da mudança da #123 para paga"
+    },
+    {
+      "id": "CT-14",
+      "titulo": "Evento assinado que o gateway não confirma não marca a cobrança como paga",
+      "criterios": ["CA5"],
+      "tipo": "negativo",
+      "tecnica": "tabela de decisão",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Cobrança #124 (R$ 399,00) com status pendente", "Mock do gateway responde status pendente na consulta do Pix da #124"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_124_14\", \"cobranca_id\": 124, \"status\": \"pago\", \"valor\": 399.00}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo e a assinatura", "Anotar o código HTTP da resposta", "Consultar o status da cobrança #124"],
+      "resultado_esperado": "A cobrança #124 continua pendente (código HTTP a conferir com a resposta da D3)"
+    },
+    {
+      "id": "CT-15",
+      "titulo": "Gateway fora do ar na consulta não marca a cobrança como paga",
+      "criterios": ["CA5"],
+      "tipo": "negativo",
+      "tecnica": "suposição de erro",
+      "prioridade": "Média",
+      "pre_condicoes": ["Cobrança #123 (R$ 39,90) com status pendente", "Mock do gateway configurado para responder HTTP 503 em GET /v1/pix/{id}"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_123_15\", \"cobranca_id\": 123, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo e a assinatura", "Anotar o código HTTP da resposta", "Consultar o status da cobrança #123"],
+      "resultado_esperado": "A cobrança #123 continua pendente (código HTTP a conferir com a resposta da D3)"
+    },
+    {
+      "id": "CT-16",
+      "titulo": "cobranca_id inexistente (99999) com assinatura válida recebe 404",
+      "criterios": ["CA6"],
+      "tipo": "negativo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": ["Não existe cobrança com id 99999 em homologação"],
+      "dados": {"corpo": "{\"event_id\": \"evt_qa_99999_16\", \"cobranca_id\": 99999, \"status\": \"pago\", \"valor\": 39.90}", "X-Assinatura": "HMAC-SHA256 do corpo com o segredo correto"},
+      "passos": ["Enviar POST /webhooks/pix com o corpo e a assinatura"],
+      "resultado_esperado": "Resposta HTTP 404"
+    }
+  ],
+  "duvidas": [
+    {"descricao": "No GET /v1/pix/{id} do gateway, o {id} é o cobranca_id, o event_id ou um id do Pix no gateway (txid)? O código atual consulta com event_id.", "criterio": "CA5", "bloqueia": ["CT-13"], "impacto": "Sem isso não dá para conferir se a consulta é feita para o Pix certo"},
+    {"descricao": "Um evento novo (event_id diferente) de pagamento para uma cobrança que já está paga (#125) deve responder 200? Deve registrar algo na auditoria? O código atual marca como paga de novo.", "criterio": ["CA2", "CA3"], "bloqueia": ["CT-08"], "impacto": "O código HTTP e o registro esperados no CT-08 dependem disso"},
+    {"descricao": "Quando o gateway não confirma o pagamento (status diferente de pago) ou está fora do ar, qual código a API responde? Esse event_id passa a contar como processado? Se a resposta for 200, o gateway não reenvia e um pagamento real pode se perder; o código atual responde 200 quando o gateway não diz pago.", "criterio": ["CA5", "CA3"], "impacto": "CT-14 e CT-15 conferem só que a cobrança continua pendente"},
+    {"descricao": "O que fazer com eventos de status diferente de pago (ex.: expirado, devolvido)? O requisito só define pago, e o código atual não lê o campo status do evento.", "criterio": "CA2", "impacto": "Nenhum caso cobre outros status; se houver regra, faltam casos"},
+    {"descricao": "Qual o segredo de homologação do gateway e o formato do X-Assinatura (hex ou base64, com ou sem prefixo como sha256=)?", "criterio": "CA1", "impacto": "Dado de ambiente: sem ele o testador não gera assinatura válida para nenhum caso; pedir ao dev antes de executar"},
+    {"descricao": "Como e onde o QA consulta o log de auditoria, e com quais nomes de campo aparecem os dois valores do VALOR_DIVERGENTE?", "criterio": "CA4", "impacto": "CT-09 a CT-12 conferem os valores, não o nome dos campos"},
+    {"descricao": "Qual resposta para corpo malformado (sem event_id ou cobranca_id, valor como texto)? O requisito não cobre.", "criterio": ["CA1", "CA6"], "impacto": "Nenhum caso cobre corpo malformado"}
+  ],
+  "suposicoes": [
+    {"descricao": "Se a consulta ao gateway não confirma o pagamento, a cobrança não é marcada como paga (o CA5 diz que a consulta serve para confirmar, mas não diz o que acontece quando não confirma)", "casos": ["CT-14", "CT-15"]},
+    {"descricao": "Processar de novo inclui consultar o gateway e registrar VALOR_DIVERGENTE outra vez; por isso a repetição é conferida pela contagem desses registros e das chamadas ao mock", "casos": ["CT-06", "CT-07"]},
+    {"descricao": "O ambiente de homologação permite trocar o gateway por um mock que registra chamadas e escolhe a resposta", "casos": ["CT-06", "CT-13", "CT-14", "CT-15"]}
+  ],
+  "fora_do_escopo": [
+    "Criação da cobrança e geração do QR Code Pix",
+    "Política de reenvio do gateway (quantas vezes e com que intervalo ele reenvia)",
+    "Notificação ao cliente depois do pagamento",
+    "Proteção contra replay por timestamp, rotação do segredo e testes de carga do webhook"
+  ]
+}

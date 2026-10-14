@@ -1,0 +1,214 @@
+{
+  "funcionalidade": "Cancelamento de assinatura pelo app",
+  "origem": "Mensagem do PO no Slack (B-cancelamento-slack.txt), colada pelo usuário em 14/10/2026",
+  "criterios": [
+    {"id": "CA1", "descricao": "Assinante cancela pelo app a qualquer momento em Conta > Assinatura > Cancelar", "fonte": "derivado"},
+    {"id": "CA2", "descricao": "Antes de cancelar, o app pede confirmação com \"Tem certeza?\"", "fonte": "derivado"},
+    {"id": "CA3", "descricao": "Cancelamento em até 7 dias da contratação tem reembolso integral (CDC), em qualquer plano", "fonte": "derivado"},
+    {"id": "CA4", "descricao": "Cancelado depois de 7 dias, o assinante mantém acesso até o fim do período já pago", "fonte": "derivado"},
+    {"id": "CA5", "descricao": "Cancelado depois de 7 dias, o assinante não é cobrado de novo", "fonte": "derivado"},
+    {"id": "CA6", "descricao": "Plano anual cancelado depois de 7 dias tem reembolso proporcional aos meses não usados (R$ 399,00 / 12 = R$ 33,25 por mês)", "fonte": "derivado"},
+    {"id": "CA7", "descricao": "Um e-mail confirmando o cancelamento é enviado ao assinante", "fonte": "derivado"}
+  ],
+  "casos": [
+    {
+      "id": "CT-01",
+      "titulo": "Mensal cancelado no 3º dia recebe reembolso integral de R$ 39,90",
+      "criterios": ["CA1", "CA3"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.mensal01@nexiteste.com logado no app", "Plano Mensal R$ 39,90 contratado há 3 dias com o cartão de teste final 1111"],
+      "dados": {"usuário": "qa.mensal01@nexiteste.com", "plano": "Mensal R$ 39,90", "dias desde a contratação": "3"},
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Confirmar no diálogo \"Tem certeza?\"", "Consultar as transações do cartão final 1111 no painel do gateway de homologação"],
+      "resultado_esperado": "Conta > Assinatura mostra a assinatura como cancelada; o gateway registra um estorno de R$ 39,90 para a cobrança da contratação"
+    },
+    {
+      "id": "CT-02",
+      "titulo": "Tocar em Cancelar abre o diálogo \"Tem certeza?\" sem cancelar ainda",
+      "criterios": ["CA2"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.mensal02@nexiteste.com logado com plano Mensal R$ 39,90 ativo há 15 dias"],
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Observar a tela sem responder ao diálogo"],
+      "resultado_esperado": "Aparece o diálogo com o texto \"Tem certeza?\"; enquanto ele está aberto, nenhum estorno é registrado no gateway e o status no banco continua ativo"
+    },
+    {
+      "id": "CT-03",
+      "titulo": "Desistir no diálogo \"Tem certeza?\" mantém a assinatura ativa",
+      "criterios": ["CA1", "CA2", "CA7"],
+      "tipo": "negativo",
+      "tecnica": "suposição de erro",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.mensal03@nexiteste.com logado com plano Mensal R$ 39,90 ativo há 3 dias", "Nome do botão de desistir não definido (ver dúvida sobre o diálogo)"],
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "No diálogo \"Tem certeza?\", escolher a opção de não cancelar", "Consultar o gateway de homologação e a caixa de qa.mensal03@nexiteste.com"],
+      "resultado_esperado": "Conta > Assinatura continua mostrando o plano Mensal ativo; nenhum estorno no gateway; nenhum e-mail de cancelamento recebido"
+    },
+    {
+      "id": "CT-04",
+      "titulo": "Mensal cancelado no 7º dia ainda recebe reembolso integral de R$ 39,90",
+      "criterios": ["CA3"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.mensal04@nexiteste.com com plano Mensal R$ 39,90 contratado em 01/10/2026", "Relógio do ambiente ajustado para 08/10/2026 (7 dias corridos após a contratação; ver suposição de contagem)"],
+      "dados": {"contratação": "01/10/2026", "data do cancelamento": "08/10/2026"},
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Confirmar no diálogo \"Tem certeza?\"", "Consultar o gateway de homologação"],
+      "resultado_esperado": "O gateway registra um estorno de R$ 39,90"
+    },
+    {
+      "id": "CT-05",
+      "titulo": "Mensal cancelado no 8º dia não recebe reembolso",
+      "criterios": ["CA3"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.mensal05@nexiteste.com com plano Mensal R$ 39,90 contratado em 01/10/2026", "Relógio do ambiente ajustado para 09/10/2026 (8 dias corridos após a contratação)", "Depende da suposição de que mensal após 7 dias não tem reembolso"],
+      "dados": {"contratação": "01/10/2026", "data do cancelamento": "09/10/2026"},
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Confirmar no diálogo \"Tem certeza?\"", "Consultar o gateway de homologação"],
+      "resultado_esperado": "Nenhum estorno é registrado no gateway para a cobrança de R$ 39,90"
+    },
+    {
+      "id": "CT-06",
+      "titulo": "Anual cancelado no 7º dia recebe reembolso integral de R$ 399,00",
+      "criterios": ["CA3"],
+      "tipo": "borda",
+      "tecnica": "tabela de decisão",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.anual01@nexiteste.com com plano Anual R$ 399,00 contratado em 01/10/2026", "Relógio do ambiente ajustado para 08/10/2026"],
+      "dados": {"plano": "Anual R$ 399,00", "contratação": "01/10/2026", "data do cancelamento": "08/10/2026"},
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Confirmar no diálogo \"Tem certeza?\"", "Consultar o gateway de homologação"],
+      "resultado_esperado": "O gateway registra um estorno de R$ 399,00 (integral, e não proporcional)"
+    },
+    {
+      "id": "CT-07",
+      "titulo": "Anual cancelado no 8º dia recebe reembolso proporcional de R$ 365,75",
+      "criterios": ["CA6"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.anual02@nexiteste.com com plano Anual R$ 399,00 contratado em 01/10/2026", "Relógio do ambiente ajustado para 09/10/2026 (1º mês em andamento)", "Depende da suposição de que o mês em andamento conta como usado"],
+      "dados": {"meses não usados": "11", "conta": "11 × R$ 33,25 = R$ 365,75"},
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Confirmar no diálogo \"Tem certeza?\"", "Consultar o gateway de homologação"],
+      "resultado_esperado": "O gateway registra um estorno de R$ 365,75 (e não de R$ 399,00)"
+    },
+    {
+      "id": "CT-08",
+      "titulo": "Anual cancelado no 4º mês recebe reembolso proporcional de R$ 266,00",
+      "criterios": ["CA1", "CA6"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.anual03@nexiteste.com com plano Anual R$ 399,00 contratado em 01/07/2026", "Data do teste: 14/10/2026 (4º mês em andamento; 3 meses completos)", "Depende da suposição de que o mês em andamento conta como usado"],
+      "dados": {"meses usados": "4 (3 completos + o mês em andamento)", "meses não usados": "8", "conta": "8 × R$ 33,25 = R$ 266,00"},
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Confirmar no diálogo \"Tem certeza?\"", "Consultar o gateway de homologação"],
+      "resultado_esperado": "O gateway registra um estorno de R$ 266,00"
+    },
+    {
+      "id": "CT-09",
+      "titulo": "Anual cancelado no 12º mês fica sem reembolso proporcional",
+      "criterios": ["CA6"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.anual04@nexiteste.com com plano Anual R$ 399,00 contratado em 01/11/2025", "Data do teste: 14/10/2026 (12º mês em andamento)", "Depende da suposição de que o mês em andamento conta como usado"],
+      "dados": {"meses não usados": "0", "conta": "0 × R$ 33,25 = R$ 0,00"},
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Confirmar no diálogo \"Tem certeza?\"", "Consultar o gateway de homologação"],
+      "resultado_esperado": "Nenhum estorno é registrado no gateway (nem estorno de R$ 0,00)"
+    },
+    {
+      "id": "CT-10",
+      "titulo": "Mensal cancelado no 15º dia continua assistindo até o fim do período pago",
+      "criterios": ["CA4"],
+      "tipo": "positivo",
+      "tecnica": "transição de estado",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.mensal06@nexiteste.com com plano Mensal R$ 39,90 contratado em 29/09/2026 (período pago até 29/10/2026)", "Data do teste: 14/10/2026"],
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Confirmar no diálogo \"Tem certeza?\"", "Voltar ao catálogo e dar play em um título"],
+      "resultado_esperado": "O título reproduz normalmente depois do cancelamento"
+    },
+    {
+      "id": "CT-11",
+      "titulo": "Acesso termina depois da data fim do período pago",
+      "criterios": ["CA4"],
+      "tipo": "borda",
+      "tecnica": "transição de estado",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.mensal06@nexiteste.com de CT-10 (cancelado em 14/10/2026, período pago até 29/10/2026)", "Relógio do ambiente avançado para 30/10/2026", "Depende da suposição de que o acesso termina no fim do período pago; tela exibida não definida"],
+      "passos": ["Abrir o app", "Dar play no mesmo título de CT-10"],
+      "resultado_esperado": "O título não reproduz"
+    },
+    {
+      "id": "CT-12",
+      "titulo": "Mensal cancelado após 7 dias não é cobrado na data de renovação",
+      "criterios": ["CA5"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.mensal06@nexiteste.com de CT-10 (cancelado em 14/10/2026, renovação seria em 29/10/2026)", "Relógio do ambiente avançado para 29/10/2026 e job de renovação executado"],
+      "passos": ["Consultar as transações do cartão final 1111 no gateway de homologação"],
+      "resultado_esperado": "Nenhuma cobrança de R$ 39,90 é registrada em 29/10/2026"
+    },
+    {
+      "id": "CT-13",
+      "titulo": "Anual cancelado após 7 dias não é cobrado na renovação anual",
+      "criterios": ["CA5"],
+      "tipo": "positivo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.anual03@nexiteste.com de CT-08 (contratado em 01/07/2026, cancelado em 14/10/2026)", "Relógio do ambiente avançado para 01/07/2027 e job de renovação executado"],
+      "passos": ["Consultar as transações do cartão do usuário no gateway de homologação"],
+      "resultado_esperado": "Nenhuma cobrança de R$ 399,00 é registrada em 01/07/2027"
+    },
+    {
+      "id": "CT-14",
+      "titulo": "E-mail de confirmação chega após cancelar",
+      "criterios": ["CA7"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.mensal07@nexiteste.com logado com plano Mensal R$ 39,90 ativo há 15 dias", "Caixa de e-mail de teste acessível (ex.: Mailtrap do ambiente)"],
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "Confirmar no diálogo \"Tem certeza?\"", "Abrir a caixa de qa.mensal07@nexiteste.com"],
+      "resultado_esperado": "Exatamente 1 e-mail de confirmação de cancelamento é recebido em qa.mensal07@nexiteste.com"
+    },
+    {
+      "id": "CT-15",
+      "titulo": "Toque duplo em Confirmar gera um único reembolso",
+      "criterios": ["CA1", "CA3"],
+      "tipo": "negativo",
+      "tecnica": "suposição de erro",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.mensal08@nexiteste.com com plano Mensal R$ 39,90 contratado há 2 dias"],
+      "passos": ["Acessar Conta > Assinatura", "Tocar em Cancelar", "No diálogo \"Tem certeza?\", tocar duas vezes rapidamente em confirmar", "Consultar o gateway de homologação"],
+      "resultado_esperado": "O gateway registra exatamente 1 estorno de R$ 39,90 (total estornado R$ 39,90)"
+    }
+  ],
+  "duvidas": [
+    {"descricao": "Como contar os 7 dias: o dia da contratação é o dia 0 ou o dia 1? Dias corridos ou 7 × 24 h a partir do horário da compra? Qual fuso?", "criterio": ["CA3", "CA6"], "impacto": "Define a data limite de CT-04, CT-05, CT-06 e CT-07; hoje eles usam a suposição de dias corridos com contratação = dia 0"},
+    {"descricao": "Plano mensal cancelado depois de 7 dias realmente não tem nenhum reembolso? O texto só fala de reembolso para o anual nesse caso", "criterio": ["CA3", "CA6"], "impacto": "CT-05 assume que não há estorno"},
+    {"descricao": "No proporcional do anual, o mês em andamento conta como usado? Ou o cálculo é por dia? Como arredondar centavos se for por dia?", "criterio": "CA6", "impacto": "CT-07, CT-08 e CT-09 assumem mês em andamento = usado. Se não contar, CT-08 seria 9 × R$ 33,25 = R$ 299,25 e CT-07 seria R$ 399,00"},
+    {"descricao": "Quem cancela dentro dos 7 dias (com reembolso integral) perde o acesso na hora ou continua até o fim do período?", "criterio": ["CA3", "CA4"], "impacto": "Nenhum caso confere o acesso depois do cancelamento com reembolso integral"},
+    {"descricao": "Quem cancela o anual com reembolso proporcional continua com acesso até o fim do ano pago ou só até o fim do mês em andamento? Acesso até o fim do ano somado ao reembolso dos meses seria pagar duas vezes", "criterio": ["CA4", "CA6"], "impacto": "Sem caso de acesso para o anual cancelado após 7 dias"},
+    {"descricao": "Como o reembolso é feito (estorno no mesmo cartão, crédito, Pix) e em quanto tempo deve aparecer?", "criterio": ["CA3", "CA6"], "impacto": "Os casos conferem o estorno no gateway de homologação, não o prazo nem a forma"},
+    {"descricao": "Assinaturas compradas pela App Store ou Google Play: o cancelamento e o reembolso também passam por Conta > Assinatura > Cancelar no nosso app?", "criterio": "CA1", "impacto": "Todos os casos assumem pagamento direto com cartão no gateway da Nexi"},
+    {"descricao": "Qual o texto completo do diálogo e o nome dos botões (confirmar / desistir)? Só \"Tem certeza?\" está definido", "criterio": "CA2", "impacto": "CT-02 e CT-03 conferem só o texto \"Tem certeza?\""},
+    {"descricao": "O que o e-mail de confirmação deve conter (valor do reembolso, data fim do acesso, assunto, remetente)? Em quanto tempo deve chegar?", "criterio": "CA7", "impacto": "CT-14 confere só que 1 e-mail chegou"},
+    {"descricao": "O que o app mostra depois de cancelar (mensagem de sucesso, data fim do acesso em Conta > Assinatura) e para uma assinatura já cancelada o botão Cancelar continua aparecendo?", "criterio": ["CA1", "CA4"], "impacto": "Nenhum caso confere mensagens na tela; não há caso de cancelar duas vezes a mesma assinatura"},
+    {"descricao": "O que o usuário vê ao tentar assistir depois do fim do período pago (tela de assinar de novo, mensagem)?", "criterio": "CA4", "impacto": "CT-11 confere só que o título não reproduz"}
+  ],
+  "suposicoes": [
+    {"descricao": "Os 7 dias são corridos e o dia da contratação é o dia 0 (contratado em 01/10, o 7º dia é 08/10)", "casos": ["CT-04", "CT-05", "CT-06", "CT-07"]},
+    {"descricao": "Plano mensal cancelado depois de 7 dias não tem reembolso (o texto só fala de reembolso proporcional para o anual)", "casos": ["CT-05"]},
+    {"descricao": "No proporcional do anual, o mês em andamento conta como usado; valor mensal = R$ 399,00 / 12 = R$ 33,25", "casos": ["CT-07", "CT-08", "CT-09"]},
+    {"descricao": "Ao fim do período pago o acesso ao conteúdo termina", "casos": ["CT-11"]},
+    {"descricao": "Pagamento direto com cartão no gateway da Nexi, conferível no painel de homologação", "casos": ["CT-01", "CT-04", "CT-05", "CT-06", "CT-07", "CT-08", "CT-09", "CT-12", "CT-13", "CT-15"]}
+  ],
+  "fora_do_escopo": [
+    "Cancelamento pela web ou pelo suporte/administração",
+    "Reativar uma assinatura cancelada",
+    "Troca de plano (mensal para anual e vice-versa)",
+    "Período de teste grátis e assinaturas com cupom de desconto",
+    "Assinaturas compradas pela App Store / Google Play (até a resposta do PO)"
+  ]
+}

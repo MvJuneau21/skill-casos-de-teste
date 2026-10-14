@@ -1,0 +1,226 @@
+{
+  "funcionalidade": "Pausar assinatura",
+  "origem": "HIST-430 (arquivo D-pausar-assinatura.md enviado pelo usuário)",
+  "criterios": [
+    {"id": "CA1", "descricao": "Assinante do plano Mensal pode pausar por 30, 60 ou 90 dias em Conta > Assinatura > Pausar", "fonte": "explícito"},
+    {"id": "CA2", "descricao": "A pausa máxima é de 2 meses", "fonte": "explícito"},
+    {"id": "CA3", "descricao": "Só é possível pausar uma vez a cada 12 meses", "fonte": "explícito"},
+    {"id": "CA4", "descricao": "Durante a pausa não há cobrança, o assinante não consegue assistir e os downloads offline são apagados do aparelho", "fonte": "explícito"},
+    {"id": "CA5", "descricao": "No fim da pausa a assinatura volta sozinha e a cobrança acontece no dia em que a pausa termina", "fonte": "explícito"},
+    {"id": "CA6", "descricao": "O assinante pode retomar antes do fim em Conta > Assinatura > Retomar; a cobrança acontece no dia da retomada", "fonte": "explícito"},
+    {"id": "CA7", "descricao": "Plano Anual não pode pausar: o botão Pausar não aparece", "fonte": "explícito"}
+  ],
+  "casos": [
+    {
+      "id": "CT-01",
+      "titulo": "Assinante Mensal pausa por 30 dias",
+      "criterios": ["CA1"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.pausa01@nexi.test logado, plano Mensal R$ 39,90 ativo há 3 meses, nunca pausou"],
+      "dados": {"usuário": "qa.pausa01@nexi.test", "plano": "Mensal R$ 39,90", "duração": "30 dias"},
+      "passos": ["Acessar Conta > Assinatura", "Clicar em Pausar", "Escolher 30 dias", "Confirmar a pausa"],
+      "resultado_esperado": "Conta > Assinatura passa a exibir o botão Retomar; no banco a assinatura de qa.pausa01@nexi.test fica pausada com duração de 30 dias"
+    },
+    {
+      "id": "CT-02",
+      "titulo": "Pausa de 60 dias (limite de 2 meses) é aceita",
+      "criterios": ["CA1", "CA2"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa02@nexi.test logado, plano Mensal R$ 39,90 ativo há 3 meses, nunca pausou"],
+      "dados": {"usuário": "qa.pausa02@nexi.test", "duração": "60 dias"},
+      "passos": ["Acessar Conta > Assinatura", "Clicar em Pausar", "Escolher 60 dias", "Confirmar a pausa"],
+      "resultado_esperado": "Conta > Assinatura passa a exibir o botão Retomar; no banco a assinatura fica pausada com duração de 60 dias"
+    },
+    {
+      "id": "CT-03",
+      "titulo": "Opção de 90 dias acima da pausa máxima de 2 meses (contradição CA1 x CA2, ver D1)",
+      "criterios": ["CA1", "CA2"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa03@nexi.test logado, plano Mensal R$ 39,90 ativo há 3 meses, nunca pausou", "Caso bloqueado até o PO responder a D1"],
+      "dados": {"usuário": "qa.pausa03@nexi.test", "duração": "90 dias"},
+      "passos": ["Acessar Conta > Assinatura", "Clicar em Pausar", "Conferir as opções de duração exibidas", "Se a opção 90 dias existir, escolher 90 dias e confirmar"],
+      "resultado_esperado": "A tela Pausar exibe as opções 30 dias e 60 dias; a presença da opção 90 dias e a duração gravada no banco são comparadas com a resposta da D1"
+    },
+    {
+      "id": "CT-04",
+      "titulo": "Sair da tela Pausar sem confirmar não pausa a assinatura",
+      "criterios": ["CA1"],
+      "tipo": "negativo",
+      "tecnica": "suposição de erro",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa04@nexi.test logado, plano Mensal R$ 39,90 ativo, nunca pausou"],
+      "dados": {"usuário": "qa.pausa04@nexi.test", "duração escolhida": "30 dias", "conteúdo": "Série QA T1E1"},
+      "passos": ["Acessar Conta > Assinatura", "Clicar em Pausar", "Escolher 30 dias", "Voltar para Conta > Assinatura sem confirmar", "Dar play em Série QA T1E1"],
+      "resultado_esperado": "Conta > Assinatura não exibe o botão Retomar, nenhuma pausa é gravada no banco e o episódio Série QA T1E1 começa a tocar"
+    },
+    {
+      "id": "CT-05",
+      "titulo": "Assinatura já pausada não aceita nova pausa",
+      "criterios": ["CA3"],
+      "tipo": "negativo",
+      "tecnica": "transição de estado",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa05@nexi.test com plano Mensal pausado há 5 dias, pausa de 30 dias"],
+      "dados": {"usuário": "qa.pausa05@nexi.test", "duração tentada": "60 dias"},
+      "passos": ["Acessar Conta > Assinatura", "Tentar pausar de novo por 60 dias"],
+      "resultado_esperado": "No banco continua existindo só a pausa de 30 dias, com a mesma data de fim de antes da tentativa"
+    },
+    {
+      "id": "CT-06",
+      "titulo": "Depois de retomar antes do fim, nova pausa no mesmo período de 12 meses é recusada",
+      "criterios": ["CA3", "CA6"],
+      "tipo": "negativo",
+      "tecnica": "transição de estado",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa06@nexi.test, plano Mensal, pausou por 60 dias há 10 dias e retomou ontem em Conta > Assinatura > Retomar"],
+      "dados": {"usuário": "qa.pausa06@nexi.test", "duração tentada": "30 dias"},
+      "passos": ["Acessar Conta > Assinatura", "Tentar pausar por 30 dias"],
+      "resultado_esperado": "Nenhuma pausa nova é gravada no banco e a assinatura continua ativa: o botão Retomar não aparece"
+    },
+    {
+      "id": "CT-07",
+      "titulo": "Segunda pausa 11 meses depois do início da primeira é recusada",
+      "criterios": ["CA3"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa07@nexi.test, plano Mensal ativo", "Datas manipuladas no banco: pausa de 30 dias iniciada há 11 meses e encerrada automaticamente há 10 meses"],
+      "dados": {"usuário": "qa.pausa07@nexi.test", "duração tentada": "30 dias"},
+      "passos": ["Acessar Conta > Assinatura", "Tentar pausar por 30 dias"],
+      "resultado_esperado": "Nenhuma pausa nova é gravada no banco e a assinatura continua ativa: o botão Retomar não aparece"
+    },
+    {
+      "id": "CT-08",
+      "titulo": "Segunda pausa exatamente 12 meses depois do início da primeira (ver D3)",
+      "criterios": ["CA3"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa08@nexi.test, plano Mensal ativo", "Datas manipuladas no banco: pausa de 30 dias iniciada há exatamente 12 meses e encerrada automaticamente há 11 meses", "Resultado esperado vale se os 12 meses contam do início da pausa anterior; bloqueado até a D3"],
+      "dados": {"usuário": "qa.pausa08@nexi.test", "duração": "30 dias"},
+      "passos": ["Acessar Conta > Assinatura", "Clicar em Pausar", "Escolher 30 dias", "Confirmar a pausa"],
+      "resultado_esperado": "Conta > Assinatura passa a exibir o botão Retomar; no banco aparece uma segunda pausa de 30 dias"
+    },
+    {
+      "id": "CT-09",
+      "titulo": "Data de cobrança que cai durante a pausa não gera cobrança",
+      "criterios": ["CA4"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.pausa09@nexi.test, plano Mensal R$ 39,90 com próxima cobrança amanhã", "Pausa de 60 dias confirmada hoje", "Relógio do ambiente avançado em 10 dias (passa da data de cobrança e fica dentro da pausa em qualquer resposta da D2)"],
+      "dados": {"usuário": "qa.pausa09@nexi.test", "duração": "60 dias"},
+      "passos": ["Consultar no gateway as cobranças de qa.pausa09@nexi.test entre hoje e o 10º dia"],
+      "resultado_esperado": "Nenhuma cobrança de R$ 39,90 de qa.pausa09@nexi.test aparece no gateway nesse intervalo"
+    },
+    {
+      "id": "CT-10",
+      "titulo": "Assinante com assinatura pausada não consegue assistir",
+      "criterios": ["CA4"],
+      "tipo": "negativo",
+      "tecnica": "transição de estado",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa10@nexi.test logado no site, plano Mensal R$ 39,90 com próxima cobrança amanhã", "Pausa de 60 dias confirmada hoje; relógio do ambiente avançado em 10 dias"],
+      "dados": {"usuário": "qa.pausa10@nexi.test", "conteúdo": "Série QA T1E1"},
+      "passos": ["Abrir a página de Série QA T1E1", "Clicar em play"],
+      "resultado_esperado": "O episódio Série QA T1E1 não começa a tocar"
+    },
+    {
+      "id": "CT-11",
+      "titulo": "Downloads offline são apagados do aparelho durante a pausa",
+      "criterios": ["CA4"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa11@nexi.test, plano Mensal com próxima cobrança amanhã, logado no app Android com internet", "Episódios Série QA T1E1 e T1E2 baixados no aparelho", "Pausa de 60 dias confirmada hoje pelo site; relógio do ambiente avançado em 10 dias"],
+      "dados": {"usuário": "qa.pausa11@nexi.test", "aparelho": "Android de teste com internet", "downloads": ["Série QA T1E1", "Série QA T1E2"]},
+      "passos": ["Abrir o app no aparelho", "Acessar a aba Downloads", "Conferir o armazenamento do app nas configurações do Android"],
+      "resultado_esperado": "A aba Downloads não lista Série QA T1E1 nem T1E2 e o armazenamento do app não tem mais os arquivos dos dois episódios"
+    },
+    {
+      "id": "CT-12",
+      "titulo": "No dia do fim da pausa a assinatura volta sozinha com cobrança de R$ 39,90",
+      "criterios": ["CA5"],
+      "tipo": "positivo",
+      "tecnica": "transição de estado",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.pausa12@nexi.test, plano Mensal R$ 39,90, pausa de 30 dias confirmada", "Relógio do ambiente avançado até o dia em que a pausa termina (data depende da D2)"],
+      "dados": {"usuário": "qa.pausa12@nexi.test", "conteúdo": "Série QA T1E1"},
+      "passos": ["Consultar no gateway as cobranças de qa.pausa12@nexi.test do dia", "Entrar no site com qa.pausa12@nexi.test", "Dar play em Série QA T1E1"],
+      "resultado_esperado": "O gateway mostra uma cobrança de R$ 39,90 com a data do fim da pausa e o episódio Série QA T1E1 começa a tocar, sem o assinante clicar em Retomar"
+    },
+    {
+      "id": "CT-13",
+      "titulo": "Na véspera do fim da pausa não há cobrança",
+      "criterios": ["CA4", "CA5"],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa13@nexi.test, plano Mensal R$ 39,90, pausa de 30 dias confirmada", "Relógio do ambiente avançado até o dia anterior ao fim da pausa (data depende da D2)"],
+      "dados": {"usuário": "qa.pausa13@nexi.test"},
+      "passos": ["Consultar no gateway as cobranças de qa.pausa13@nexi.test desde o início da pausa"],
+      "resultado_esperado": "Nenhuma cobrança de R$ 39,90 de qa.pausa13@nexi.test aparece no gateway desde o início da pausa"
+    },
+    {
+      "id": "CT-14",
+      "titulo": "Retomar antes do fim cobra R$ 39,90 no dia da retomada",
+      "criterios": ["CA6"],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.pausa14@nexi.test logado, plano Mensal R$ 39,90 com próxima cobrança amanhã", "Pausa de 60 dias confirmada hoje; relógio do ambiente avançado em 10 dias"],
+      "dados": {"usuário": "qa.pausa14@nexi.test", "conteúdo": "Série QA T1E1"},
+      "passos": ["Acessar Conta > Assinatura", "Clicar em Retomar", "Consultar no gateway as cobranças de qa.pausa14@nexi.test do dia", "Dar play em Série QA T1E1"],
+      "resultado_esperado": "O gateway mostra uma cobrança de R$ 39,90 com a data da retomada e o episódio Série QA T1E1 começa a tocar"
+    },
+    {
+      "id": "CT-15",
+      "titulo": "Retomar no último dia da pausa gera uma única cobrança",
+      "criterios": ["CA5", "CA6"],
+      "tipo": "borda",
+      "tecnica": "tabela de decisão",
+      "prioridade": "Alta",
+      "pre_condicoes": ["Usuário qa.pausa15@nexi.test logado, plano Mensal R$ 39,90, pausa de 30 dias confirmada", "Relógio do ambiente avançado até o dia em que a pausa termina, antes do processamento automático do fim da pausa (data depende da D2)"],
+      "dados": {"usuário": "qa.pausa15@nexi.test"},
+      "passos": ["Acessar Conta > Assinatura", "Clicar em Retomar", "Deixar rodar o processamento do fim da pausa do dia", "Consultar no gateway as cobranças de qa.pausa15@nexi.test do dia"],
+      "resultado_esperado": "O gateway mostra exatamente uma cobrança de R$ 39,90 de qa.pausa15@nexi.test nesse dia"
+    },
+    {
+      "id": "CT-16",
+      "titulo": "Plano Anual não exibe o botão Pausar",
+      "criterios": ["CA7"],
+      "tipo": "negativo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": ["Usuário qa.pausa16@nexi.test logado, plano Anual R$ 399,00 ativo há 2 meses"],
+      "dados": {"usuário": "qa.pausa16@nexi.test", "plano": "Anual R$ 399,00"},
+      "passos": ["Acessar Conta > Assinatura"],
+      "resultado_esperado": "A tela Conta > Assinatura não exibe o botão Pausar e no banco a assinatura Anual não tem pausa registrada"
+    }
+  ],
+  "duvidas": [
+    {"descricao": "CA1 e CA2 se contradizem: CA1 oferece 30, 60 ou 90 dias e CA2 diz que a pausa máxima é de 2 meses. A opção de 90 dias existe? E '2 meses' equivale a 60 dias?", "criterio": ["CA1", "CA2"], "bloqueia": ["CT-03"], "impacto": "Sem a resposta não dá para julgar se a opção 90 dias é bug ou regra"},
+    {"descricao": "Quando a pausa começa: no dia em que o assinante confirma ou no fim do período já pago? Se começa na hora, o que acontece com os dias já pagos? Depois da volta, as próximas cobranças passam a ser mensais a partir da nova data?", "criterio": ["CA4", "CA5"], "bloqueia": ["CT-12", "CT-13", "CT-15"], "impacto": "Define a data de fim da pausa, que é o dia da cobrança e do retorno automático"},
+    {"descricao": "Os 12 meses do CA3 contam a partir do início da pausa anterior, do fim dela ou da retomada?", "criterio": "CA3", "bloqueia": ["CT-08"], "impacto": "Define em que dia a segunda pausa passa a ser permitida"},
+    {"descricao": "O que o assinante vê quando não pode pausar (já pausou nos últimos 12 meses ou já está pausado): o botão Pausar some ou aparece com mensagem? Qual mensagem? E o botão Retomar aparece para assinatura que não está pausada?", "criterio": ["CA3", "CA6"], "impacto": "CT-05, CT-06 e CT-07 conferem só que nenhuma pausa é criada, não a tela"},
+    {"descricao": "Se o aparelho estiver sem internet quando a pausa começa, quando os downloads são apagados e eles continuam tocando offline até lá?", "criterio": "CA4", "impacto": "CT-11 cobre só aparelho com internet"},
+    {"descricao": "Se a cobrança do fim da pausa ou da retomada for recusada ou o gateway estiver fora do ar, a assinatura volta mesmo assim, fica pausada ou é suspensa?", "criterio": ["CA5", "CA6"], "impacto": "Sem caso para falha de pagamento até a resposta"},
+    {"descricao": "O que o assinante vê durante a pausa ao tentar assistir (mensagem, tela de retomar)?", "criterio": "CA4", "impacto": "CT-10 confere só que o vídeo não toca"}
+  ],
+  "suposicoes": [
+    {"descricao": "Uma pausa retomada antes do fim conta como a pausa do período de 12 meses", "casos": ["CT-06"]}
+  ],
+  "fora_do_escopo": [
+    "Cancelar a assinatura durante a pausa",
+    "Trocar de plano (Mensal para Anual ou o contrário) durante a pausa",
+    "Baixar de novo os conteúdos depois da retomada",
+    "Avisos por e-mail ou push sobre o início e o fim da pausa",
+    "Pausa feita pelo suporte ou pela administração"
+  ]
+}

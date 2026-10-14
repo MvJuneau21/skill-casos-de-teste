@@ -1,0 +1,655 @@
+{
+  "funcionalidade": "Cupom de desconto no checkout",
+  "origem": "HIST-412 (arquivo A-cupom-checkout.md)",
+  "criterios": [
+    {
+      "id": "CA1",
+      "descricao": "Cupom válido aplica desconto percentual (entre 5% e 50%) sobre o valor do plano escolhido",
+      "fonte": "explícito"
+    },
+    {
+      "id": "CA2",
+      "descricao": "O código do cupom não diferencia maiúsculas de minúsculas",
+      "fonte": "explícito"
+    },
+    {
+      "id": "CA3",
+      "descricao": "Cupom fora da validade mostra a mensagem \"Este cupom expirou\" e o valor não muda",
+      "fonte": "explícito"
+    },
+    {
+      "id": "CA4",
+      "descricao": "Só um cupom por pedido; aplicar um segundo cupom substitui o primeiro",
+      "fonte": "explícito"
+    },
+    {
+      "id": "CA5",
+      "descricao": "O valor final nunca fica abaixo de R$ 1,00",
+      "fonte": "explícito"
+    },
+    {
+      "id": "CA6",
+      "descricao": "Cupons do tipo \"primeira assinatura\" só valem para quem nunca assinou o Nexi Play",
+      "fonte": "explícito"
+    }
+  ],
+  "casos": [
+    {
+      "id": "CT-01",
+      "titulo": "NEXI10 no plano Mensal reduz o total para R$ 35,91",
+      "criterios": [
+        "CA1"
+      ],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Visitante qa.cupom01@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom": "NEXI10 (10%, validade 31/12/2026)",
+        "plano": "Mensal R$ 39,90",
+        "data do teste": "data atual (14/10/2026)"
+      },
+      "passos": [
+        "Informar NEXI10 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Desconto de R$ 3,99 aparece no resumo e o total exibido muda de R$ 39,90 para R$ 35,91"
+    },
+    {
+      "id": "CT-02",
+      "titulo": "NEXI10 no plano Anual reduz o total para R$ 359,10",
+      "criterios": [
+        "CA1"
+      ],
+      "tipo": "positivo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Visitante qa.cupom02@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Anual (R$ 399,00)"
+      ],
+      "dados": {
+        "cupom": "NEXI10 (10%, validade 31/12/2026)",
+        "plano": "Anual R$ 399,00"
+      },
+      "passos": [
+        "Informar NEXI10 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Desconto de R$ 39,90 aparece no resumo e o total exibido muda de R$ 399,00 para R$ 359,10"
+    },
+    {
+      "id": "CT-03",
+      "titulo": "Cupom de 5% (limite mínimo) no Anual reduz o total para R$ 379,05",
+      "criterios": [
+        "CA1"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Visitante qa.cupom03@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Anual (R$ 399,00)"
+      ],
+      "dados": {
+        "cupom": "MINIMO5 (5%, validade 31/12/2026)",
+        "plano": "Anual R$ 399,00"
+      },
+      "passos": [
+        "Informar MINIMO5 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Desconto de R$ 19,95 aparece no resumo e o total exibido muda de R$ 399,00 para R$ 379,05"
+    },
+    {
+      "id": "CT-04",
+      "titulo": "Cupom de 50% (limite máximo) para quem nunca assinou reduz o Mensal para R$ 19,95",
+      "criterios": [
+        "CA1",
+        "CA6"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Visitante qa.cupom04@nexi.test, conta nova, nunca assinou nem fez teste grátis",
+        "Checkout aberto com o plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom": "BEMVINDO50 (50%, primeira assinatura, validade 31/12/2026)",
+        "plano": "Mensal R$ 39,90"
+      },
+      "passos": [
+        "Informar BEMVINDO50 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Desconto de R$ 19,95 aparece no resumo e o total exibido muda de R$ 39,90 para R$ 19,95"
+    },
+    {
+      "id": "CT-05",
+      "titulo": "Desconto com meio centavo (5% do Mensal = R$ 1,995) expõe a regra de arredondamento (D3)",
+      "criterios": [
+        "CA1"
+      ],
+      "tipo": "borda",
+      "tecnica": "suposição de erro",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Visitante qa.cupom05@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Mensal (R$ 39,90)",
+        "Bloqueado até a resposta da D3"
+      ],
+      "dados": {
+        "cupom": "MINIMO5 (5%, validade 31/12/2026)",
+        "plano": "Mensal R$ 39,90",
+        "conta sem arredondar": "39,90 - 1,995 = 37,905"
+      },
+      "passos": [
+        "Informar MINIMO5 no campo de cupom",
+        "Clicar em Aplicar",
+        "Finalizar a assinatura com o cartão de teste final 4242",
+        "Conferir o valor da primeira cobrança registrada no gateway"
+      ],
+      "resultado_esperado": "Total exibido tem 2 casas decimais, segue a regra de arredondamento respondida na D3, e o valor cobrado no gateway é igual ao total exibido no checkout"
+    },
+    {
+      "id": "CT-06",
+      "titulo": "Primeira cobrança registrada no gateway sai com o desconto do cupom (R$ 35,91)",
+      "criterios": [
+        "CA1"
+      ],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Visitante qa.cupom06@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom": "NEXI10 (10%, validade 31/12/2026)",
+        "plano": "Mensal R$ 39,90",
+        "cartão": "cartão de teste final 4242"
+      },
+      "passos": [
+        "Informar NEXI10 no campo de cupom",
+        "Clicar em Aplicar",
+        "Informar o cartão de teste final 4242",
+        "Clicar em Finalizar assinatura",
+        "Consultar a cobrança no painel do gateway de homologação"
+      ],
+      "resultado_esperado": "A primeira cobrança de qa.cupom06@nexi.test registrada no gateway é de R$ 35,91"
+    },
+    {
+      "id": "CT-07",
+      "titulo": "Código inexistente não aplica desconto e o total continua R$ 39,90",
+      "criterios": [
+        "CA1"
+      ],
+      "tipo": "negativo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Visitante qa.cupom07@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Mensal (R$ 39,90)",
+        "Mensagem exibida depende da D6"
+      ],
+      "dados": {
+        "cupom": "NEXI99 (não cadastrado)",
+        "plano": "Mensal R$ 39,90"
+      },
+      "passos": [
+        "Informar NEXI99 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Nenhuma linha de desconto aparece no resumo e o total continua R$ 39,90"
+    },
+    {
+      "id": "CT-08",
+      "titulo": "Código em minúsculas (nexi10) aplica o mesmo desconto de NEXI10",
+      "criterios": [
+        "CA2"
+      ],
+      "tipo": "positivo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Visitante qa.cupom08@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom digitado": "nexi10",
+        "plano": "Mensal R$ 39,90"
+      },
+      "passos": [
+        "Informar nexi10 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Desconto de R$ 3,99 aparece no resumo e o total exibido muda de R$ 39,90 para R$ 35,91"
+    },
+    {
+      "id": "CT-09",
+      "titulo": "Código misto (NeXi10) aplica o mesmo desconto de NEXI10",
+      "criterios": [
+        "CA2"
+      ],
+      "tipo": "borda",
+      "tecnica": "suposição de erro",
+      "prioridade": "Baixa",
+      "pre_condicoes": [
+        "Visitante qa.cupom09@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Anual (R$ 399,00)"
+      ],
+      "dados": {
+        "cupom digitado": "NeXi10",
+        "plano": "Anual R$ 399,00"
+      },
+      "passos": [
+        "Informar NeXi10 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Desconto de R$ 39,90 aparece no resumo e o total exibido muda de R$ 399,00 para R$ 359,10"
+    },
+    {
+      "id": "CT-10",
+      "titulo": "Cupom expirado em minúsculas (verao15) também mostra \"Este cupom expirou\"",
+      "criterios": [
+        "CA2",
+        "CA3"
+      ],
+      "tipo": "negativo",
+      "tecnica": "tabela de decisão",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Visitante qa.cupom10@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom digitado": "verao15 (VERAO15, 15%, validade 31/03/2026)",
+        "plano": "Mensal R$ 39,90"
+      },
+      "passos": [
+        "Informar verao15 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Aparece a mensagem \"Este cupom expirou\" e o total continua R$ 39,90, sem linha de desconto"
+    },
+    {
+      "id": "CT-11",
+      "titulo": "Cupom expirado (VERAO15) mostra \"Este cupom expirou\" e o total não muda",
+      "criterios": [
+        "CA3"
+      ],
+      "tipo": "negativo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Visitante qa.cupom11@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom": "VERAO15 (15%, validade 31/03/2026)",
+        "plano": "Mensal R$ 39,90"
+      },
+      "passos": [
+        "Informar VERAO15 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Aparece a mensagem \"Este cupom expirou\" e o total continua R$ 39,90, sem linha de desconto"
+    },
+    {
+      "id": "CT-12",
+      "titulo": "NEXI10 no dia seguinte ao fim da validade (01/01/2027) mostra \"Este cupom expirou\"",
+      "criterios": [
+        "CA3"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Relógio do ambiente de homologação ajustado para 01/01/2027 00:01",
+        "Visitante qa.cupom12@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom": "NEXI10 (10%, validade 31/12/2026)",
+        "plano": "Mensal R$ 39,90",
+        "data do teste": "01/01/2027 00:01"
+      },
+      "passos": [
+        "Informar NEXI10 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Aparece a mensagem \"Este cupom expirou\" e o total continua R$ 39,90, sem linha de desconto"
+    },
+    {
+      "id": "CT-13",
+      "titulo": "NEXI10 no último dia da validade (31/12/2026 23:59) é aplicado sem mensagem de expirado",
+      "criterios": [
+        "CA3"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Bloqueado até a resposta da D2",
+        "Relógio do ambiente de homologação ajustado para 31/12/2026 23:59",
+        "Visitante qa.cupom13@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom": "NEXI10 (10%, validade 31/12/2026)",
+        "plano": "Mensal R$ 39,90",
+        "data do teste": "31/12/2026 23:59"
+      },
+      "passos": [
+        "Informar NEXI10 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "A mensagem \"Este cupom expirou\" não aparece e o total exibido muda de R$ 39,90 para R$ 35,91"
+    },
+    {
+      "id": "CT-14",
+      "titulo": "Segundo cupom substitui o primeiro: NEXI10 depois MINIMO5 deixa o Anual em R$ 379,05",
+      "criterios": [
+        "CA4"
+      ],
+      "tipo": "positivo",
+      "tecnica": "transição de estado",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Visitante qa.cupom14@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Anual (R$ 399,00)"
+      ],
+      "dados": {
+        "primeiro cupom": "NEXI10 (10%)",
+        "segundo cupom": "MINIMO5 (5%)",
+        "plano": "Anual R$ 399,00"
+      },
+      "passos": [
+        "Informar NEXI10 e clicar em Aplicar",
+        "Conferir que o total ficou R$ 359,10",
+        "Informar MINIMO5 e clicar em Aplicar"
+      ],
+      "resultado_esperado": "O resumo mostra só o cupom MINIMO5, com desconto de R$ 19,95, e o total exibido é R$ 379,05 (não há desconto acumulado com NEXI10)"
+    },
+    {
+      "id": "CT-15",
+      "titulo": "Aplicar o mesmo cupom duas vezes não dobra o desconto",
+      "criterios": [
+        "CA4"
+      ],
+      "tipo": "negativo",
+      "tecnica": "suposição de erro",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Visitante qa.cupom15@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Anual (R$ 399,00)"
+      ],
+      "dados": {
+        "cupom": "NEXI10 (10%), aplicado duas vezes",
+        "plano": "Anual R$ 399,00"
+      },
+      "passos": [
+        "Informar NEXI10 e clicar em Aplicar",
+        "Informar NEXI10 de novo e clicar em Aplicar"
+      ],
+      "resultado_esperado": "O resumo mostra uma única linha de cupom NEXI10, com desconto de R$ 39,90, e o total continua R$ 359,10 (não R$ 323,19)"
+    },
+    {
+      "id": "CT-16",
+      "titulo": "Cupom expirado aplicado como segundo cupom não dá o desconto dele",
+      "criterios": [
+        "CA3",
+        "CA4"
+      ],
+      "tipo": "negativo",
+      "tecnica": "tabela de decisão",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Bloqueado até a resposta da D4 (NEXI10 continua ou sai)",
+        "Visitante qa.cupom16@nexi.test, nunca assinou",
+        "Checkout aberto com o plano Anual (R$ 399,00)"
+      ],
+      "dados": {
+        "primeiro cupom": "NEXI10 (10%, válido)",
+        "segundo cupom": "VERAO15 (15%, validade 31/03/2026)",
+        "plano": "Anual R$ 399,00"
+      },
+      "passos": [
+        "Informar NEXI10 e clicar em Aplicar",
+        "Informar VERAO15 e clicar em Aplicar"
+      ],
+      "resultado_esperado": "Aparece a mensagem \"Este cupom expirou\", o total não fica em R$ 339,15 (15% de VERAO15) e o total final corresponde à resposta da D4"
+    },
+    {
+      "id": "CT-17",
+      "titulo": "Desconto que leva o total a exatamente R$ 1,00 mantém R$ 1,00",
+      "criterios": [
+        "CA5"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Bloqueado até a resposta da D1 (dado de teste)",
+        "Plano de teste de R$ 2,00 cadastrado em homologação",
+        "Visitante qa.cupom17@nexi.test, nunca assinou"
+      ],
+      "dados": {
+        "plano": "plano de teste R$ 2,00",
+        "cupom": "BEMVINDO50 (50%) → 2,00 - 1,00 = R$ 1,00"
+      },
+      "passos": [
+        "Abrir o checkout com o plano de teste de R$ 2,00",
+        "Informar BEMVINDO50 e clicar em Aplicar"
+      ],
+      "resultado_esperado": "Desconto de R$ 1,00 aparece no resumo e o total exibido é R$ 1,00"
+    },
+    {
+      "id": "CT-18",
+      "titulo": "Desconto que levaria o total a R$ 0,99 é limitado e o total fica R$ 1,00",
+      "criterios": [
+        "CA5"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Bloqueado até a resposta da D1 (dado de teste)",
+        "Plano de teste de R$ 1,98 cadastrado em homologação",
+        "Visitante qa.cupom18@nexi.test, nunca assinou"
+      ],
+      "dados": {
+        "plano": "plano de teste R$ 1,98",
+        "cupom": "BEMVINDO50 (50%) → 1,98 - 0,99 = R$ 0,99 sem o piso"
+      },
+      "passos": [
+        "Abrir o checkout com o plano de teste de R$ 1,98",
+        "Informar BEMVINDO50 e clicar em Aplicar"
+      ],
+      "resultado_esperado": "Total exibido é R$ 1,00, e não R$ 0,99"
+    },
+    {
+      "id": "CT-19",
+      "titulo": "Cupom de primeira assinatura não vale para quem já assinou e cancelou",
+      "criterios": [
+        "CA6"
+      ],
+      "tipo": "negativo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Usuário qa.excliente01@nexi.test assinou o Mensal e cancelou em março de 2026, sem assinatura ativa",
+        "Logado e com o checkout aberto no plano Mensal (R$ 39,90)",
+        "Mensagem exibida depende da D6"
+      ],
+      "dados": {
+        "cupom": "BEMVINDO50 (50%, primeira assinatura)",
+        "plano": "Mensal R$ 39,90",
+        "usuário": "ex-assinante (Mensal cancelado em março de 2026)"
+      },
+      "passos": [
+        "Informar BEMVINDO50 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Nenhuma linha de desconto aparece no resumo e o total continua R$ 39,90"
+    },
+    {
+      "id": "CT-20",
+      "titulo": "Cupom comum (NEXI10) continua valendo para quem já assinou",
+      "criterios": [
+        "CA6"
+      ],
+      "tipo": "negativo",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Usuário qa.excliente02@nexi.test assinou o Mensal e cancelou em março de 2026, sem assinatura ativa",
+        "Logado e com o checkout aberto no plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom": "NEXI10 (10%, não é de primeira assinatura)",
+        "plano": "Mensal R$ 39,90"
+      },
+      "passos": [
+        "Informar NEXI10 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "A restrição de primeira assinatura não é aplicada: desconto de R$ 3,99 aparece e o total muda de R$ 39,90 para R$ 35,91"
+    },
+    {
+      "id": "CT-21",
+      "titulo": "Cupom de primeira assinatura para quem só fez teste grátis segue a resposta da D5",
+      "criterios": [
+        "CA6"
+      ],
+      "tipo": "borda",
+      "tecnica": "partição de equivalência",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Bloqueado até a resposta da D5",
+        "Usuário qa.trial01@nexi.test fez só o teste grátis, nunca teve cobrança paga",
+        "Logado e com o checkout aberto no plano Mensal (R$ 39,90)"
+      ],
+      "dados": {
+        "cupom": "BEMVINDO50 (50%, primeira assinatura)",
+        "plano": "Mensal R$ 39,90",
+        "usuário": "só fez teste grátis, sem cobrança paga"
+      },
+      "passos": [
+        "Informar BEMVINDO50 no campo de cupom",
+        "Clicar em Aplicar"
+      ],
+      "resultado_esperado": "Total exibido corresponde à resposta da D5: R$ 19,95 se teste grátis conta como nunca assinou; R$ 39,90 sem linha de desconto se não conta"
+    }
+  ],
+  "duvidas": [
+    {
+      "descricao": "Com os planos atuais (R$ 39,90 e R$ 399,00) e desconto máximo de 50%, o menor total possível é R$ 19,95, então o piso de R$ 1,00 do CA5 não é alcançável. Ele vale para planos ou promoções futuras? Podemos cadastrar em homologação planos de teste de R$ 2,00 e R$ 1,98 para testar o piso?",
+      "criterio": "CA5",
+      "bloqueia": [
+        "CT-17",
+        "CT-18"
+      ],
+      "impacto": "Sem dado de teste não dá para executar os casos do piso"
+    },
+    {
+      "descricao": "A validade \"31/12/2026\" inclui o dia 31 inteiro (até 23:59)? Em qual fuso horário (Brasília ou UTC)?",
+      "criterio": "CA3",
+      "bloqueia": [
+        "CT-13"
+      ],
+      "impacto": "Define se o cupom é aceito no último dia e em que horário vira expirado"
+    },
+    {
+      "descricao": "Como arredondar descontos com fração de centavo? Ex.: 5% de R$ 39,90 = R$ 1,995 (total R$ 37,905). Arredonda para cima, para baixo ou trunca, e no desconto ou no total?",
+      "criterio": "CA1",
+      "bloqueia": [
+        "CT-05"
+      ],
+      "impacto": "Sem a regra não dá para julgar o total exibido nem o valor cobrado"
+    },
+    {
+      "descricao": "Quando o segundo cupom é recusado (expirado, inexistente ou de primeira assinatura para quem já assinou), o primeiro cupom continua aplicado ou é removido? O CA3 diz que o valor não muda e o CA4 diz que o segundo substitui o primeiro.",
+      "criterio": [
+        "CA3",
+        "CA4"
+      ],
+      "bloqueia": [
+        "CT-16"
+      ],
+      "impacto": "Define se o total fica R$ 359,10 (NEXI10 mantido) ou R$ 399,00 (NEXI10 removido)"
+    },
+    {
+      "descricao": "Para o CA6, quem conta como \"já assinou\"? Quem só fez teste grátis sem cobrança paga pode usar BEMVINDO50? A checagem é por conta/e-mail, CPF ou cartão, e acontece antes ou depois do login do visitante?",
+      "criterio": "CA6",
+      "bloqueia": [
+        "CT-21"
+      ],
+      "impacto": "Define o resultado do caso de teste grátis e se um ex-assinante pode burlar a regra com outro e-mail"
+    },
+    {
+      "descricao": "Quais mensagens aparecem para código inexistente, para cupom de primeira assinatura recusado e para código vazio ou com espaços antes/depois (\" NEXI10 \")? Os espaços são removidos?",
+      "criterio": [
+        "CA1",
+        "CA2",
+        "CA6"
+      ],
+      "impacto": "CT-07 e CT-19 conferem só o total, não a mensagem; espaços não foram testados por falta de regra"
+    },
+    {
+      "descricao": "O \"para pagar menos na primeira cobrança\" significa que o desconto vale só na primeira cobrança e a renovação volta ao preço cheio (R$ 39,90 / R$ 399,00)? O checkout deve informar isso?",
+      "criterio": "CA1",
+      "impacto": "Nenhum CA define o valor das cobranças seguintes; sem a regra a renovação não foi testada"
+    },
+    {
+      "descricao": "Se o gateway de pagamento recusar o cartão ou estiver fora do ar ao finalizar com cupom, o cupom continua aplicado ao tentar de novo? Um cupom de primeira assinatura fica \"gasto\" numa cobrança que falhou?",
+      "criterio": [
+        "CA1",
+        "CA6"
+      ],
+      "impacto": "Dependência externa sem comportamento definido; nenhum caso cobre a falha do gateway"
+    }
+  ],
+  "suposicoes": [
+    {
+      "descricao": "O desconto aparece no resumo do checkout (linha de desconto e total atualizado) antes de finalizar o pagamento",
+      "casos": [
+        "CT-01",
+        "CT-02",
+        "CT-03",
+        "CT-04",
+        "CT-08",
+        "CT-09",
+        "CT-13",
+        "CT-14",
+        "CT-15",
+        "CT-17",
+        "CT-20"
+      ]
+    },
+    {
+      "descricao": "Um usuário cancelado (sem assinatura ativa) consegue abrir o checkout e assinar de novo",
+      "casos": [
+        "CT-19",
+        "CT-20"
+      ]
+    },
+    {
+      "descricao": "O relógio do ambiente de homologação pode ser ajustado para testar a validade dos cupons",
+      "casos": [
+        "CT-12",
+        "CT-13"
+      ]
+    }
+  ],
+  "fora_do_escopo": [
+    "Cadastro e administração de cupons (inclusive impedir cupom com menos de 5% ou mais de 50%, que é configuração e não entrada do visitante)",
+    "Valor das renovações e cobranças seguintes (ver D7)",
+    "Remover o cupom manualmente sem aplicar outro",
+    "Segurança, acessibilidade e desempenho do checkout"
+  ]
+}

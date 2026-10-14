@@ -1,0 +1,538 @@
+{
+  "funcionalidade": "Cancelamento de assinatura pelo app",
+  "origem": "Mensagem do PO no Slack (texto colado pelo usuário em 14/10/2026)",
+  "criterios": [
+    {
+      "id": "CA1",
+      "descricao": "Assinante cancela pelo app a qualquer momento em Conta > Assinatura > Cancelar",
+      "fonte": "derivado"
+    },
+    {
+      "id": "CA2",
+      "descricao": "Antes de cancelar, o app pede confirmação (\"Tem certeza?\")",
+      "fonte": "derivado"
+    },
+    {
+      "id": "CA3",
+      "descricao": "Cancelamento em até 7 dias da contratação tem reembolso integral",
+      "fonte": "derivado"
+    },
+    {
+      "id": "CA4",
+      "descricao": "Cancelamento depois de 7 dias mantém o acesso até o fim do período já pago",
+      "fonte": "derivado"
+    },
+    {
+      "id": "CA5",
+      "descricao": "Cancelamento depois de 7 dias não gera nova cobrança",
+      "fonte": "derivado"
+    },
+    {
+      "id": "CA6",
+      "descricao": "Plano anual cancelado depois de 7 dias tem reembolso proporcional aos meses não usados",
+      "fonte": "derivado"
+    },
+    {
+      "id": "CA7",
+      "descricao": "Um e-mail confirma o cancelamento",
+      "fonte": "derivado"
+    }
+  ],
+  "casos": [
+    {
+      "id": "CT-01",
+      "titulo": "Mensal cancelado no 3º dia recebe reembolso integral de R$ 39,90",
+      "criterios": [
+        "CA1",
+        "CA3"
+      ],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Usuário qa.cancel01@nexi.test logado no app",
+        "Plano Mensal R$ 39,90 contratado há 3 dias, pago com cartão de teste final 4242"
+      ],
+      "dados": {
+        "usuário": "qa.cancel01@nexi.test",
+        "plano": "Mensal R$ 39,90",
+        "dias desde a contratação": "3"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Confirmar na pergunta \"Tem certeza?\"",
+        "Consultar a transação da assinatura no gateway de pagamento"
+      ],
+      "resultado_esperado": "Gateway mostra reembolso de R$ 39,90 para a assinatura de qa.cancel01@nexi.test"
+    },
+    {
+      "id": "CT-02",
+      "titulo": "Anual cancelado no 3º dia recebe reembolso integral de R$ 399,00",
+      "criterios": [
+        "CA3"
+      ],
+      "tipo": "positivo",
+      "tecnica": "tabela de decisão",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Usuário qa.cancel02@nexi.test logado no app",
+        "Plano Anual R$ 399,00 contratado há 3 dias"
+      ],
+      "dados": {
+        "usuário": "qa.cancel02@nexi.test",
+        "plano": "Anual R$ 399,00",
+        "dias desde a contratação": "3"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Confirmar na pergunta \"Tem certeza?\"",
+        "Consultar a transação da assinatura no gateway de pagamento"
+      ],
+      "resultado_esperado": "Gateway mostra reembolso de R$ 399,00 para a assinatura de qa.cancel02@nexi.test"
+    },
+    {
+      "id": "CT-03",
+      "titulo": "Mensal cancelado no 7º dia ainda recebe reembolso integral de R$ 39,90",
+      "criterios": [
+        "CA3"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Usuário qa.cancel03@nexi.test logado no app",
+        "Plano Mensal R$ 39,90 contratado; data do ambiente avançada para contratação + 7 dias (ex.: contratado em 01/10, testar em 08/10)"
+      ],
+      "dados": {
+        "usuário": "qa.cancel03@nexi.test",
+        "plano": "Mensal R$ 39,90",
+        "dia do cancelamento": "contratação + 7 dias"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Confirmar na pergunta \"Tem certeza?\"",
+        "Consultar a transação no gateway"
+      ],
+      "resultado_esperado": "Gateway mostra reembolso de R$ 39,90"
+    },
+    {
+      "id": "CT-04",
+      "titulo": "Mensal cancelado no 8º dia não recebe reembolso",
+      "criterios": [
+        "CA3"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Usuário qa.cancel04@nexi.test logado no app",
+        "Plano Mensal R$ 39,90 contratado; data do ambiente avançada para contratação + 8 dias (ex.: contratado em 01/10, testar em 09/10)"
+      ],
+      "dados": {
+        "usuário": "qa.cancel04@nexi.test",
+        "plano": "Mensal R$ 39,90",
+        "dia do cancelamento": "contratação + 8 dias"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Confirmar na pergunta \"Tem certeza?\"",
+        "Consultar a transação no gateway"
+      ],
+      "resultado_esperado": "Gateway não mostra nenhum reembolso para a assinatura; a cobrança de R$ 39,90 continua liquidada"
+    },
+    {
+      "id": "CT-05",
+      "titulo": "Mensal cancelado no 15º dia mantém acesso até o fim do período pago",
+      "criterios": [
+        "CA4"
+      ],
+      "tipo": "positivo",
+      "tecnica": "transição de estado",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Usuário qa.cancel05@nexi.test com plano Mensal R$ 39,90 contratado há 15 dias",
+        "Assinatura cancelada pelo app no 15º dia",
+        "Data do ambiente avançada para contratação + 25 dias (ainda dentro do mês pago)"
+      ],
+      "dados": {
+        "usuário": "qa.cancel05@nexi.test",
+        "título de teste": "QA-001",
+        "data simulada": "contratação + 25 dias (dentro do período pago)"
+      },
+      "passos": [
+        "Abrir o app logado como qa.cancel05@nexi.test",
+        "Buscar o título QA-001",
+        "Tocar em reproduzir"
+      ],
+      "resultado_esperado": "O player reproduz QA-001 e o contador de tempo avança"
+    },
+    {
+      "id": "CT-06",
+      "titulo": "Mensal cancelado perde o acesso no dia seguinte ao fim do período pago",
+      "criterios": [
+        "CA4"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Usuário qa.cancel05@nexi.test com plano Mensal cancelado no 15º dia (mesmo usuário de CT-05)",
+        "Data do ambiente avançada para 1 dia depois do fim do período pago (contratação + 1 mês + 1 dia)"
+      ],
+      "dados": {
+        "usuário": "qa.cancel05@nexi.test",
+        "título de teste": "QA-001",
+        "data simulada": "contratação + 1 mês + 1 dia (fora do período pago)"
+      },
+      "passos": [
+        "Abrir o app logado como qa.cancel05@nexi.test",
+        "Buscar o título QA-001",
+        "Tocar em reproduzir"
+      ],
+      "resultado_esperado": "O player não reproduz QA-001 (contador de tempo não avança)"
+    },
+    {
+      "id": "CT-07",
+      "titulo": "Mensal cancelado no 15º dia não é cobrado na data de renovação",
+      "criterios": [
+        "CA5"
+      ],
+      "tipo": "negativo",
+      "tecnica": "transição de estado",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Usuário qa.cancel06@nexi.test com plano Mensal R$ 39,90 cancelado pelo app no 15º dia",
+        "Data do ambiente avançada para a data de renovação (contratação + 1 mês) e rotina de cobrança recorrente executada"
+      ],
+      "dados": {
+        "usuário": "qa.cancel06@nexi.test",
+        "plano": "Mensal R$ 39,90"
+      },
+      "passos": [
+        "Consultar as transações da assinatura no gateway após a rotina de cobrança"
+      ],
+      "resultado_esperado": "Gateway mostra só a cobrança inicial de R$ 39,90; nenhuma cobrança nova na data de renovação"
+    },
+    {
+      "id": "CT-08",
+      "titulo": "Anual cancelado no 4º mês recebe reembolso proporcional de R$ 266,00",
+      "criterios": [
+        "CA6"
+      ],
+      "tipo": "positivo",
+      "tecnica": "tabela de decisão",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Usuário qa.cancel07@nexi.test com plano Anual R$ 399,00 contratado há 3 meses e 10 dias (4º mês em curso); data do ambiente ajustada se preciso"
+      ],
+      "dados": {
+        "usuário": "qa.cancel07@nexi.test",
+        "plano": "Anual R$ 399,00",
+        "conta": "399,00 / 12 = 33,25 por mês; 4 meses usados (mês em curso conta); 8 × 33,25 = 266,00"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Confirmar na pergunta \"Tem certeza?\"",
+        "Consultar a transação no gateway"
+      ],
+      "resultado_esperado": "Gateway mostra reembolso de R$ 266,00"
+    },
+    {
+      "id": "CT-09",
+      "titulo": "Anual cancelado no 8º dia recebe reembolso proporcional de R$ 365,75, não integral",
+      "criterios": [
+        "CA3",
+        "CA6"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Usuário qa.cancel08@nexi.test com plano Anual R$ 399,00 contratado; data do ambiente avançada para contratação + 8 dias"
+      ],
+      "dados": {
+        "usuário": "qa.cancel08@nexi.test",
+        "plano": "Anual R$ 399,00",
+        "conta": "1 mês usado (em curso); 11 × 33,25 = 365,75"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Confirmar na pergunta \"Tem certeza?\"",
+        "Consultar a transação no gateway"
+      ],
+      "resultado_esperado": "Gateway mostra reembolso de R$ 365,75"
+    },
+    {
+      "id": "CT-10",
+      "titulo": "Anual cancelado no 12º mês não gera reembolso",
+      "criterios": [
+        "CA6"
+      ],
+      "tipo": "borda",
+      "tecnica": "valor limite",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Usuário qa.cancel09@nexi.test com plano Anual R$ 399,00 contratado há 11 meses e 10 dias (12º mês em curso); data do ambiente ajustada"
+      ],
+      "dados": {
+        "usuário": "qa.cancel09@nexi.test",
+        "plano": "Anual R$ 399,00",
+        "conta": "12 meses usados; 0 × 33,25 = 0,00"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Confirmar na pergunta \"Tem certeza?\"",
+        "Consultar a transação no gateway"
+      ],
+      "resultado_esperado": "Gateway não mostra reembolso para a assinatura (nenhum lançamento de R$ 0,00 nem valor negativo)"
+    },
+    {
+      "id": "CT-11",
+      "titulo": "Anual cancelado no 4º mês mantém acesso até o fim do mês em curso",
+      "criterios": [
+        "CA4",
+        "CA6"
+      ],
+      "tipo": "positivo",
+      "tecnica": "transição de estado",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Usuário qa.cancel07@nexi.test com plano Anual cancelado no 4º mês (mesmo usuário de CT-08)",
+        "Data do ambiente avançada em 5 dias, ainda dentro do 4º mês"
+      ],
+      "dados": {
+        "usuário": "qa.cancel07@nexi.test",
+        "título de teste": "QA-001"
+      },
+      "passos": [
+        "Abrir o app logado como qa.cancel07@nexi.test",
+        "Buscar o título QA-001",
+        "Tocar em reproduzir"
+      ],
+      "resultado_esperado": "O player reproduz QA-001 e o contador de tempo avança"
+    },
+    {
+      "id": "CT-12",
+      "titulo": "Tocar em Cancelar mostra a pergunta \"Tem certeza?\" antes de cancelar",
+      "criterios": [
+        "CA2"
+      ],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Usuário qa.cancel10@nexi.test com plano Mensal R$ 39,90 ativo há 3 dias"
+      ],
+      "dados": {
+        "usuário": "qa.cancel10@nexi.test"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Sem responder a pergunta, consultar o gateway e a caixa de qa.cancel10@nexi.test"
+      ],
+      "resultado_esperado": "Aparece a pergunta \"Tem certeza?\"; o gateway não mostra reembolso e nenhum e-mail de cancelamento chegou"
+    },
+    {
+      "id": "CT-13",
+      "titulo": "Desistir na pergunta \"Tem certeza?\" não cancela a assinatura",
+      "criterios": [
+        "CA1",
+        "CA2",
+        "CA7"
+      ],
+      "tipo": "negativo",
+      "tecnica": "suposição de erro",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Usuário qa.cancel10@nexi.test com plano Mensal R$ 39,90 ativo há 3 dias"
+      ],
+      "dados": {
+        "usuário": "qa.cancel10@nexi.test"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Desistir na pergunta \"Tem certeza?\" (opção de não confirmar ou fechar o diálogo)",
+        "Consultar o gateway, a caixa de e-mail e o status da assinatura no banco"
+      ],
+      "resultado_esperado": "Status da assinatura no banco continua ativa; gateway sem reembolso; nenhum e-mail de cancelamento em qa.cancel10@nexi.test"
+    },
+    {
+      "id": "CT-14",
+      "titulo": "Cancelamento confirmado envia e-mail de confirmação",
+      "criterios": [
+        "CA7"
+      ],
+      "tipo": "positivo",
+      "tecnica": "caminho feliz",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Usuário qa.cancel11@nexi.test com plano Mensal R$ 39,90 ativo há 15 dias; caixa de e-mail vazia"
+      ],
+      "dados": {
+        "usuário": "qa.cancel11@nexi.test"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Confirmar na pergunta \"Tem certeza?\"",
+        "Abrir a caixa de qa.cancel11@nexi.test"
+      ],
+      "resultado_esperado": "Chega em qa.cancel11@nexi.test um e-mail confirmando o cancelamento da assinatura"
+    },
+    {
+      "id": "CT-15",
+      "titulo": "Toque duplo em confirmar registra um só reembolso",
+      "criterios": [
+        "CA3"
+      ],
+      "tipo": "negativo",
+      "tecnica": "suposição de erro",
+      "prioridade": "Alta",
+      "pre_condicoes": [
+        "Usuário qa.cancel12@nexi.test com plano Mensal R$ 39,90 contratado há 2 dias"
+      ],
+      "dados": {
+        "usuário": "qa.cancel12@nexi.test",
+        "plano": "Mensal R$ 39,90"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tocar em Cancelar",
+        "Tocar duas vezes seguidas na confirmação da pergunta \"Tem certeza?\"",
+        "Consultar a transação no gateway"
+      ],
+      "resultado_esperado": "Gateway mostra exatamente um reembolso de R$ 39,90 (total reembolsado R$ 39,90)"
+    },
+    {
+      "id": "CT-16",
+      "titulo": "Assinatura já cancelada não recebe segundo reembolso",
+      "criterios": [
+        "CA1",
+        "CA3"
+      ],
+      "tipo": "negativo",
+      "tecnica": "transição de estado",
+      "prioridade": "Média",
+      "pre_condicoes": [
+        "Usuário qa.cancel01@nexi.test com plano Mensal já cancelado no 3º dia e reembolsado em R$ 39,90 (estado final de CT-01)"
+      ],
+      "dados": {
+        "usuário": "qa.cancel01@nexi.test"
+      },
+      "passos": [
+        "Acessar Conta > Assinatura",
+        "Tentar tocar em Cancelar de novo e confirmar, se a opção existir",
+        "Consultar a transação no gateway"
+      ],
+      "resultado_esperado": "Gateway continua com um único reembolso de R$ 39,90 (total reembolsado R$ 39,90)"
+    }
+  ],
+  "duvidas": [
+    {
+      "descricao": "Como contam os 7 dias? O dia da contratação é o dia 0 ou o dia 1? Conta por data (dias corridos) ou por 7 × 24 h a partir da hora da contratação? Em qual fuso?",
+      "criterio": "CA3",
+      "bloqueia": [
+        "CT-03",
+        "CT-04",
+        "CT-09"
+      ],
+      "impacto": "Define qual é o último dia com reembolso integral; os casos de limite usam a suposição de dia 0 e dias corridos"
+    },
+    {
+      "descricao": "Como se calcula o reembolso proporcional do anual? Base de R$ 399,00 / 12 = R$ 33,25 por mês ou outra (ex.: mês usado cobrado a R$ 39,90)? O mês em curso conta como usado? Como arredondar centavos?",
+      "criterio": "CA6",
+      "bloqueia": [
+        "CT-08",
+        "CT-09",
+        "CT-10"
+      ],
+      "impacto": "Muda o valor esperado do reembolso (ex.: no 4º mês, R$ 266,00 se o mês em curso conta como usado; R$ 299,25 se não conta)"
+    },
+    {
+      "descricao": "O texto diz que, passados 7 dias, o assinante mantém acesso até o fim do período pago, e também que o anual tem reembolso dos meses não usados. No anual cancelado depois de 7 dias, o acesso vai até o fim do mês em curso ou até o fim do ano contratado (mesmo com reembolso)?",
+      "criterio": [
+        "CA4",
+        "CA6"
+      ],
+      "impacto": "Contradição: falta o caso de acesso do anual depois do mês em curso. CT-11 só confere o que vale nas duas leituras (acesso dentro do mês em curso)"
+    },
+    {
+      "descricao": "Mensal cancelado depois de 7 dias fica sem nenhum reembolso? O texto só fala de reembolso em até 7 dias e no anual.",
+      "criterio": [
+        "CA3",
+        "CA6"
+      ],
+      "impacto": "CT-04 assume que não há reembolso (ver suposição)"
+    },
+    {
+      "descricao": "Quem cancela em até 7 dias (com reembolso integral) perde o acesso na hora ou mantém até o fim do período?",
+      "criterio": [
+        "CA3",
+        "CA4"
+      ],
+      "impacto": "Sem caso de acesso para cancelamento em até 7 dias; será criado com a resposta"
+    },
+    {
+      "descricao": "O que o app mostra ao abrir Conta > Assinatura de uma assinatura já cancelada (botão Cancelar some, fica desabilitado, aparece mensagem)? E qual o texto dos botões da confirmação?",
+      "criterio": [
+        "CA1",
+        "CA2"
+      ],
+      "impacto": "CT-13 e CT-16 conferem só gateway, banco e e-mail, não a tela"
+    },
+    {
+      "descricao": "O que o e-mail de confirmação precisa conter (valor do reembolso, data de fim do acesso) e em quanto tempo deve chegar? O reembolso volta para o meio de pagamento original e em que prazo?",
+      "criterio": [
+        "CA7",
+        "CA3",
+        "CA6"
+      ],
+      "impacto": "CT-14 confere só que o e-mail chega; casos de reembolso conferem o registro no gateway, não o estorno no cartão"
+    },
+    {
+      "descricao": "A regra vale para assinaturas feitas por App Store/Google Play, para teste grátis e para cancelamento pela web, ou só para quem assinou e cancela pelo app?",
+      "criterio": "CA1",
+      "impacto": "Pode exigir casos adicionais por canal de compra"
+    }
+  ],
+  "suposicoes": [
+    {
+      "descricao": "O dia da contratação é o dia 0 e os 7 dias contam por data, em dias corridos (contratado em 01/10: dia 7 = 08/10, dia 8 = 09/10)",
+      "casos": [
+        "CT-03",
+        "CT-04",
+        "CT-09"
+      ]
+    },
+    {
+      "descricao": "Plano mensal cancelado depois de 7 dias não tem reembolso (o texto só cita reembolso em até 7 dias e no anual)",
+      "casos": [
+        "CT-04"
+      ]
+    },
+    {
+      "descricao": "Reembolso proporcional = meses não usados × R$ 33,25 (R$ 399,00 / 12), e o mês em curso conta como usado",
+      "casos": [
+        "CT-08",
+        "CT-09",
+        "CT-10"
+      ]
+    }
+  ],
+  "fora_do_escopo": [
+    "Reativar assinatura cancelada",
+    "Troca de plano (mensal ↔ anual)",
+    "Cancelamento feito pelo suporte ou backoffice",
+    "Cancelamento automático por falta de pagamento",
+    "Layout e texto completo do e-mail de cancelamento"
+  ]
+}
